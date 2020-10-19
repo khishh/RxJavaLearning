@@ -23,6 +23,10 @@ import io.reactivex.functions.Function;
 import io.reactivex.functions.Predicate;
 import io.reactivex.observers.DisposableObserver;
 import io.reactivex.schedulers.Schedulers;
+import io.reactivex.subjects.AsyncSubject;
+import io.reactivex.subjects.BehaviorSubject;
+import io.reactivex.subjects.PublishSubject;
+import io.reactivex.subjects.ReplaySubject;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -40,435 +44,304 @@ public class MainActivity extends AppCompatActivity {
 
     private CompositeDisposable compositeDisposable = new CompositeDisposable();
 
+    // Subject
+    // a Subject can subscribe to multiple Observables and emit the data to multiple subscribers.
+    // asyncSubject/behaviorSubject/PublishSubject/ReplaySubject
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // ======== Just Operator =======
+        // ======= AsyncSubject =======
+        // AsyncSubject only emit the last item of observable
+        // asyncSubjectDemo1();
 
-        //greetingObservable = Observable.just(greeting);
+        // asyncSubjectDemo2();
 
-        // just operator only emit item once even if it's array
-        //greetingObservable = Observable.just(greetings);
+        // ======= BehaviorSubject =======
+        // When an observer subscribes to BehaviorSubject, it emits the most recently emitted item and all the subsequent items
+        // behaviorSubjectDemo1();
 
-        // by inputting values separately like below, observer will emit item one by one.
-        //greetingObservable = Observable.just("hello1", "hello2", "hello3");
+        // behaviorSubjectDemo2();
 
-        // ======== FromArray Operator =======
+        // ======= PublishSubject =======
+        // PublicSubject emits all the subsequent items of the Observable at the time of subscription
 
-        // emit items in array one by one.
-        // greetingObservable = Observable.fromArray(numbers);
+        // publicSubjectDemo1();
+        // publishSubjectDemo2();
 
-        // ======== Range Operator =======
+        // ======= ReplaySubject =======
+        // replay subject emits all the items of the Observable without considering when the subscriber subscribed
+        // --> ReplaySubject emits all the items of the observables without considering when the subscriber subscribed.
 
-        /*
+        // replaySubjectDemo1();
+        replaySubjectDemo2();
 
-        greetingObservable = Observable.range(1, 20);
+    }
 
-        compositeDisposable.add(
-                greetingObservable.subscribeOn(Schedulers.io())
-                        .observeOn(AndroidSchedulers.mainThread())
-                        .subscribeWith(getObserver())
-        );
+    // should only emit the last item of observable which is JSON
+    void asyncSubjectDemo1(){
+        Observable<String> languages = Observable.just("JAVA", "KOTLIN", "XML", "JSON")
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread());
 
-         */
+        AsyncSubject<String> asyncSubject = AsyncSubject.create();
+        languages.subscribe(asyncSubject);
 
-        // ======== Create Operator =======
+        asyncSubject.subscribe(getFirstObserver());
+        asyncSubject.subscribe(getSecondObserver());
+        asyncSubject.subscribe(getThirdObserver());
 
-        /*
-        // we can customize what kind of data to be emitted into observer
-        studentObservable = Observable.create(new ObservableOnSubscribe<Student>() {
-            @Override
-            public void subscribe(ObservableEmitter<Student> emitter) throws Exception {
+    }
 
-                List<Student> studentList = initStudents();
-
-                // emit all Student and later will be streamed into studentDisposableObserver after emitter.onComplete();
-                for(Student student : studentList){
-                    Log.d(TAG, "subscribe: " + student.getEmail());
-                    emitter.onNext(student);
-                }
+    // should only emit the last item of observable which is JSON. The last item till AsyncSubject.onComplete() is called
+    void asyncSubjectDemo2(){
 
-                emitter.onComplete();
-            }
-        });
+        AsyncSubject<String> asyncSubject = AsyncSubject.create();
 
-        compositeDisposable.add(
-                studentObservable.subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribeWith(getStudentObserver())
-        );
-
-         */
-
-        // ======== Map Operator =======
-
-        // applying a function to transform each of Student instance
-
-        /*
-        studentObservable = Observable.create(new ObservableOnSubscribe<Student>() {
-            @Override
-            public void subscribe(ObservableEmitter<Student> emitter) throws Exception {
-                List<Student> studentList = initStudents();
-
-                // emit all Student and later will be streamed into studentDisposableObserver after emitter.onComplete();
-                for(Student student : studentList){
-                    Log.d(TAG, "subscribe: " + student.getName());
-                    emitter.onNext(student);
-                }
-
-                emitter.onComplete();
-            }
-        });
-
-        // in map operator, modify/transform the data emitted from Observable and return it to Observer
-        compositeDisposable.add(
-                studentObservable.subscribeOn(Schedulers.io())
-                        .observeOn(AndroidSchedulers.mainThread())
-                        .map(new Function<Student, Object>() {
-
-                            @Override
-                            public Student apply(Student student) throws Exception {
-                                student.setName(student.getName().toUpperCase());
-                                return student;
-                            }
-                        })
-                        .subscribeWith(getStudentObserver())
-        );
-
-         */
-
-        // ======== FlatMap Operator =======
-
-        // transform the items emitted by an Observable into Observables, then flatten the emissions from those into a single Observable
-        // item -> Map operator -> item
-        // item -> FlatMap operator -> Observable
-        // cons: FlatMap does not preserve the order of the elements
-
-        /*
-
-        studentObservable = Observable.create(new ObservableOnSubscribe<Student>() {
-            @Override
-            public void subscribe(ObservableEmitter<Student> emitter) throws Exception {
-                List<Student> studentList = initStudents();
-
-                // emit all Student and later will be streamed into studentDisposableObserver after emitter.onComplete();
-                for(Student student : studentList){
-                    Log.d(TAG, "subscribe: " + student.getName());
-                    emitter.onNext(student);
-                }
-
-                emitter.onComplete();
-            }
-        });
-
-        // in map operator, modify/transform the data emitted from Observable and return it to Observer
-        compositeDisposable.add(
-                studentObservable.subscribeOn(Schedulers.io())
-                        .observeOn(AndroidSchedulers.mainThread())
-                        .flatMap(new Function<Student, ObservableSource<?>>() {
-                            @Override
-                            public ObservableSource<?> apply(Student student) throws Exception {
-                                // either return single observables
-                                //student.setName(student.getName().toUpperCase());
-                                //return Observable.just(student);
-
-                                // or return multiple observables
-                                Student flatMapStudent1 = new Student(student);
-                                Student flatMapStudent2 = new Student(student);
-
-                                student.setName(student.getName().toUpperCase());
-                                return Observable.just(student, flatMapStudent1, flatMapStudent2);
-                            }
-                        })
-                        .subscribeWith(getStudentObserver())
-        );
-
-         */
-
-        // ======== ConcatMap Operator =======
-        // emit the emissions from two or more Observables without interleaving them --> cares the order of the element unlike FlatMap
-        // con: concatMap waits for each observable to finish all the work until next one starts proceeding --> efficiency go down
-        // determine to use FlatMap or ConcatMap by if the order is important or not
-
-        /*
-        studentObservable = Observable.create(new ObservableOnSubscribe<Student>() {
-            @Override
-            public void subscribe(ObservableEmitter<Student> emitter) throws Exception {
-                List<Student> studentList = initStudents();
-
-                // emit all Student and later will be streamed into studentDisposableObserver after emitter.onComplete();
-                for(Student student : studentList){
-                    Log.d(TAG, "subscribe: " + student.getName());
-                    emitter.onNext(student);
-                }
-
-                emitter.onComplete();
-            }
-        });
-
-        compositeDisposable.add(
-                studentObservable.subscribeOn(Schedulers.io())
-                        .observeOn(AndroidSchedulers.mainThread())
-                        .concatMap(new Function<Student, ObservableSource<?>>() {
-                            @Override
-                            public ObservableSource<?> apply(Student student) throws Exception {
-                                // either return single observables
-                                //student.setName(student.getName().toUpperCase());
-                                //return Observable.just(student);
-
-                                // or return multiple observables
-                                Student flatMapStudent1 = new Student(student);
-                                Student flatMapStudent2 = new Student(student);
-
-                                student.setName(student.getName().toUpperCase());
-                                return Observable.just(student, flatMapStudent1, flatMapStudent2);
-                            }
-                        })
-                        .subscribeWith(getStudentObserver())
-        );
-         */
-
-        // ======== Buffer Operator =======
-        // periodically gather items emitted by an Observable into bundles and mit these bundles rather than emitting the items one at a time
-
-        /*
-        Observable<Integer> bufferNumbers = Observable.range(1, 22);
-
-        bufferNumbers.subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                // buffer(# of items bundled together)
-                .buffer(4)
-                // List<Observer> below because it is bundled together
-                .subscribe(new Observer<List<Integer>>() {
-                    @Override
-                    public void onSubscribe(Disposable d) {
-                        Log.d(TAG, "onSubscribe: ");
-                    }
-
-                    @Override
-                    public void onNext(List<Integer> integers) {
-                        Log.d(TAG, "onNext started: ");
-
-                        for(Integer num: integers){
-                            Log.d(TAG, "onNext: " + num);
-                        }
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-                        Log.d(TAG, "onError: ");
-                    }
-
-                    @Override
-                    public void onComplete() {
-                        Log.d(TAG, "onComplete: ");
-                    }
-                });
-
-         */
-
-        // ======== Filter Operator =======
-        // emit only those items from an Observable that pass a predicate test
-
-        /*
-        Observable<Integer> bufferNumbers = Observable.range(1, 22);
-        bufferNumbers.subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .filter(new Predicate<Integer>() {
-                    @Override
-                    public boolean test(Integer integer) throws Exception {
-                        return integer%3 == 0;
-                    }
-                })
-                .subscribe(new Observer<Integer>() {
-                    @Override
-                    public void onSubscribe(Disposable d) {
-                        Log.d(TAG, "onSubscribe: ");
-                    }
-
-                    @Override
-                    public void onNext(Integer integer) {
-                        Log.d(TAG, "onNext: " + integer);
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-                        Log.d(TAG, "onError: ");
-                    }
-
-                    @Override
-                    public void onComplete() {
-                        Log.d(TAG, "onComplete: ");
-                    }
-                });
-
-         */
-
-        // ======== Distinct Operator =======
-        // suppress duplicate items emitted by an Observable
-
-        /*
-        Observable<Integer> duplicatedNumbers = Observable.just(1,2,3,7,3,5,5,3,4,4);
-        duplicatedNumbers.subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .distinct()
-                .subscribe(new Observer<Integer>() {
-                    @Override
-                    public void onSubscribe(Disposable d) {
-                        Log.d(TAG, "onSubscribe: ");
-                    }
-
-                    @Override
-                    public void onNext(Integer integer) {
-                        Log.d(TAG, "onNext: " + integer);
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-                        Log.d(TAG, "onError: ");
-                    }
-
-                    @Override
-                    public void onComplete() {
-                        Log.d(TAG, "onComplete: ");
-                    }
-                });
-
-         */
-
-        // ======== Skip Operator =======
-        // suppress the first n items emitted by an Observable
-
-        /*
-        Observable<Integer> duplicatedNumbers = Observable.just(1,2,3,7,3,5,5,3,4,4);
-        duplicatedNumbers.subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .skip(4)
-                .subscribe(new Observer<Integer>() {
-                    @Override
-                    public void onSubscribe(Disposable d) {
-                        Log.d(TAG, "onSubscribe: ");
-                    }
-
-                    @Override
-                    public void onNext(Integer integer) {
-                        Log.d(TAG, "onNext: " + integer);
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-                        Log.d(TAG, "onError: ");
-                    }
-
-                    @Override
-                    public void onComplete() {
-                        Log.d(TAG, "onComplete: ");
-                    }
-                });
-
-         */
-
-        // ======== SkipLast Operator =======
-        // suppress the final n items emitted by an Observable
-        Observable<Integer> duplicatedNumbers = Observable.just(1,2,3,7,3,5,5,3,4,4);
-        duplicatedNumbers.subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .skipLast(4)
-                .subscribe(new Observer<Integer>() {
-                    @Override
-                    public void onSubscribe(Disposable d) {
-                        Log.d(TAG, "onSubscribe: ");
-                    }
-
-                    @Override
-                    public void onNext(Integer integer) {
-                        Log.d(TAG, "onNext: " + integer);
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-                        Log.d(TAG, "onError: ");
-                    }
-
-                    @Override
-                    public void onComplete() {
-                        Log.d(TAG, "onComplete: ");
-                    }
-                });
+        asyncSubject.subscribe(getFirstObserver());
+
+        // because asyncSubject can act as an Observer. too
+        asyncSubject.onNext("JAVA");
+        asyncSubject.onNext("KOTLIN");
+        asyncSubject.onNext("XML");
+
+        asyncSubject.subscribe(getSecondObserver());
+
+        asyncSubject.onNext("JSON");
+        //asyncSubject.onComplete();
+
+        asyncSubject.subscribe(getThirdObserver());
+        asyncSubject.onComplete();
+
+    }
+
+    void behaviorSubjectDemo1(){
+        Observable<String> languages = Observable.just("JAVA", "KOTLIN", "XML", "JSON")
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread());
+
+        BehaviorSubject<String> behaviorSubject = BehaviorSubject.create();
+        languages.subscribe(behaviorSubject);
+
+        // subscribe to Observable at the beginning of the emission.
+        behaviorSubject.subscribe(getFirstObserver());
+        behaviorSubject.subscribe(getSecondObserver());
+        behaviorSubject.subscribe(getThirdObserver());
+
+    }
+
+    void behaviorSubjectDemo2(){
+
+        BehaviorSubject<String> behaviorSubject = BehaviorSubject.create();
+
+        behaviorSubject.onNext("even before");
+        behaviorSubject.onNext("before");
+
+        behaviorSubject.subscribe(getFirstObserver());
+
+        // because asyncSubject can act as an Observer. too
+        behaviorSubject.onNext("JAVA");
+        behaviorSubject.onNext("KOTLIN");
+        behaviorSubject.onNext("XML");
+
+        behaviorSubject.subscribe(getSecondObserver());
+
+        behaviorSubject.onNext("JSON");
+        behaviorSubject.onComplete();
+
+        // thirdObserver will not receive anything because behaviorSubject already called onComplete()
+        behaviorSubject.subscribe(getThirdObserver());
+
+        // if onComplete called here, thirdObserver will also receive JSON
+        // behaviorSubject.onComplete();
+
+    }
+
+    void publishSubjectDemo1(){
+        Observable<String> languages = Observable.just("JAVA", "KOTLIN", "XML", "JSON")
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread());
+
+        PublishSubject<String> publishSubject = PublishSubject.create();
+        languages.subscribe(publishSubject);
+
+        // each Observer will receive all items in Observable because PublishSubject will emit subsequent items at the time of subscription.
+        // no item has emitted before subscription
+        publishSubject.subscribe(getFirstObserver());
+        publishSubject.subscribe(getSecondObserver());
+        publishSubject.subscribe(getThirdObserver());
+
+    }
+
+    void publishSubjectDemo2(){
+
+        PublishSubject<String> publishSubject = PublishSubject.create();
+
+        publishSubject.onNext("even before");
+        publishSubject.onNext("before");
+
+        publishSubject.subscribe(getFirstObserver());
+
+        // because asyncSubject can act as an Observer. too
+        publishSubject.onNext("JAVA");
+        publishSubject.onNext("KOTLIN");
+        publishSubject.onNext("XML");
+
+        publishSubject.subscribe(getSecondObserver());
+
+        publishSubject.onNext("JSON");
+        publishSubject.onComplete();
+
+        // thirdObserver will not receive anything because behaviorSubject already called onComplete()
+        publishSubject.subscribe(getThirdObserver());
+
+        // if onComplete called here, thirdObserver will also receive JSON
+        // behaviorSubject.onComplete();
+
+    }
+
+    void replaySubjectDemo1(){
+        Observable<String> languages = Observable.just("JAVA", "KOTLIN", "XML", "JSON")
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread());
+
+        ReplaySubject<String> replaySubject = ReplaySubject.create();
+        languages.subscribe(replaySubject);
+
+        replaySubject.subscribe(getFirstObserver());
+        replaySubject.subscribe(getSecondObserver());
+        replaySubject.subscribe(getThirdObserver());
+
+    }
+
+    void replaySubjectDemo2(){
+
+        ReplaySubject<String> replaySubject = ReplaySubject.create();
+
+        replaySubject.subscribe(getFirstObserver());
+
+        // because asyncSubject can act as an Observer. too
+        replaySubject.onNext("JAVA");
+        replaySubject.onNext("KOTLIN");
+        replaySubject.onNext("XML");
+
+        replaySubject.subscribe(getSecondObserver());
+
+        replaySubject.onNext("JSON");
+        //asyncSubject.onComplete();
+
+        replaySubject.subscribe(getThirdObserver());
+        replaySubject.onComplete();
 
     }
 
 
-    /*
-    private DisposableObserver getObserver(){
+    private Observer<String> getFirstObserver() {
 
-        greetingObserver = new DisposableObserver<Integer>() {
+        Observer<String> observer = new Observer<String>() {
             @Override
-            public void onNext(Integer s) {
-                Log.d(TAG, "onNext: " + s);
+            public void onSubscribe(Disposable d) {
+
+
+                Log.i(TAG, " First Observer onSubscribe ");
+            }
+
+            @Override
+            public void onNext(String s) {
+
+                Log.i(TAG, " First Observer Received " + s);
+
             }
 
             @Override
             public void onError(Throwable e) {
-                Log.d(TAG, "onError: ");
+
+                Log.i(TAG, " First Observer onError ");
             }
 
             @Override
             public void onComplete() {
-                Log.d(TAG, "onComplete: ");
+
+                Log.i(TAG, " First Observer onComplete ");
+
             }
         };
 
-        return greetingObserver;
+        return observer;
     }
-     */
 
-    private DisposableObserver getStudentObserver(){
+    private Observer<String> getSecondObserver() {
 
-        studentDisposableObserver = new DisposableObserver<Student>() {
+        Observer<String> observer = new Observer<String>() {
             @Override
-            public void onNext(Student student) {
-                Log.d(TAG, "onNext: " + student.getName());
+            public void onSubscribe(Disposable d) {
+
+
+                Log.i(TAG, " Second Observer onSubscribe ");
+            }
+
+            @Override
+            public void onNext(String s) {
+
+                Log.i(TAG, " Second Observer Received " + s);
+
             }
 
             @Override
             public void onError(Throwable e) {
-                Log.d(TAG, "onError: ");
+
+                Log.i(TAG, " Second Observer onError ");
             }
 
             @Override
             public void onComplete() {
-                Log.d(TAG, "onComplete: ");
+
+                Log.i(TAG, " Second Observer onComplete ");
+
             }
         };
 
-        return studentDisposableObserver;
+        return observer;
     }
 
-    private List<Student> initStudents(){
+    private Observer<String> getThirdObserver() {
 
-        List<Student> studentList = new ArrayList<>();
+        Observer<String> observer = new Observer<String>() {
+            @Override
+            public void onSubscribe(Disposable d) {
 
-        Student student1 = new Student("Student1", "student1@gmail.com", 20);
-        Student student2 = new Student("Student2", "student2@gmail.com", 21);
-        Student student3 = new Student("Student3", "student3@gmail.com", 22);
-        Student student4 = new Student("Student4", "student4@gmail.com", 23);
-        Student student5 = new Student("Student5", "student5@gmail.com", 24);
 
-        studentList.add(student1);
-        studentList.add(student2);
-        studentList.add(student3);
-        studentList.add(student4);
-        studentList.add(student5);
+                Log.i(TAG, " Third Observer onSubscribe ");
+            }
 
-        return studentList;
+            @Override
+            public void onNext(String s) {
+
+                Log.i(TAG, " Third Observer Received " + s);
+
+            }
+
+            @Override
+            public void onError(Throwable e) {
+
+                Log.i(TAG, " Third Observer onError ");
+            }
+
+            @Override
+            public void onComplete() {
+
+                Log.i(TAG, " Third Observer onComplete ");
+
+            }
+        };
+
+        return observer;
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        compositeDisposable.clear();
     }
 }
